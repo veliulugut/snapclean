@@ -50,14 +50,31 @@ func (m AppModel) View() string {
 	}
 
 	if m.currentView == tableView {
+		if m.columnMenuMode {
+			return components.RenderColumnMenu(
+				m.dataTable,
+				m.selectedColumn,
+				m.columnMessage,
+			)
+		}
 		return components.RenderTable(
 			m.dataTable,
 			m.scrollOffset,
 			m.columnOffset,
 			m.pageSize,
-			m.visibleColumns,
+			m.width,
 		)
 	}
 
+	// Cleaning view - renders cleaning options menu
+	if m.currentView == cleaningView {
+		return components.RenderCleaning(components.CleaningViewModel{
+			Options:  m.cleaningOptions,
+			Selected: m.cleaningSelected,
+			Message:  m.cleaningMessage,
+		})
+	}
+
+	// Default : Menu view
 	return components.RenderMenu(m.selectedItem, m.options, m.statusText)
 }
