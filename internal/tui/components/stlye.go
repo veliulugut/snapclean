@@ -81,3 +81,13 @@ var SplashContainerStyle = lipgloss.NewStyle().
 	Padding(3, 4).
 	Width(90).
 	Align(lipgloss.Center)
+
+// Column menu styles
+var SelectedStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("#FFFF87")).
+	Bold(true)
+
+var SuccessMessageStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("#87FF87")).
+	Bold(true).
+	MarginBottom(1)

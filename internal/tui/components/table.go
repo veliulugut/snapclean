@@ -41,25 +41,19 @@ var (
 )
 
 // RenderTable renders a data table with pagination and horizontal scroll
-func RenderTable(dt *models.DataTable, scrollOffset, columnOffset, pageSize, visibleColumns int) string {
+func RenderTable(dt *models.DataTable, scrollOffset, columnOffset, pageSize, termWidth int) string {
 	if dt == nil || dt.IsEmpty() {
-		return lipgloss.Place(
-			100, 30,
-			lipgloss.Center, lipgloss.Center,
-			ContainerStyle.Render("No data to display"),
-		)
+		return ContainerStyle.Render("No data to display")
 	}
 
 	var output strings.Builder
 
-	// Title
 	title := HeaderStyle.Render(fmt.Sprintf(" DATA VIEW - %s ", dt.FileName))
-	output.WriteString(title)
-	output.WriteString("\n\n")
+	output.WriteString(title + "\n\n")
 
-	// Info bar
 	totalCols := dt.ColumnCount()
-	endCol := columnOffset + visibleColumns
+	visibleColCount := 11 // Show 11 columns at a time
+	endCol := columnOffset + visibleColCount
 	if endCol > totalCols {
 		endCol = totalCols
 	}
@@ -72,52 +66,40 @@ func RenderTable(dt *models.DataTable, scrollOffset, columnOffset, pageSize, vis
 		totalCols,
 		dt.FileName,
 	))
-	output.WriteString(info)
-	output.WriteString("\n\n")
+	output.WriteString(info + "\n\n")
 
 	// Get visible columns
-	visibleHeaders := getVisibleSlice(dt.Headers, columnOffset, visibleColumns)
+	visibleHeaders := getVisibleSlice(dt.Headers, columnOffset, visibleColCount)
+	colWidths := calculateColumnWidths(dt, columnOffset, visibleColCount)
 
-	// Calculate column widths for visible columns only
-	colWidths := calculateColumnWidths(dt, 20, columnOffset, visibleColumns)
-
-	// Render headers
+	// Headers
 	headerRow := renderRow(visibleHeaders, colWidths, TableHeaderStyle)
-	output.WriteString(headerRow)
-	output.WriteString("\n")
-	output.WriteString(strings.Repeat("─", sum(colWidths)+len(colWidths)*3))
-	output.WriteString("\n")
+	output.WriteString(headerRow + "\n")
+	output.WriteString(strings.Repeat("─", sum(colWidths)+len(colWidths)*3) + "\n")
 
-	// Render visible rows
+	// Data rows
 	totalRows := dt.RowCount()
 	endRow := scrollOffset + pageSize
 	if endRow > totalRows {
 		endRow = totalRows
 	}
-
 	for i := scrollOffset; i < endRow; i++ {
 		row, _ := dt.GetRow(i)
-		visibleCells := getVisibleSlice(row, columnOffset, visibleColumns)
-		rowStr := renderRow(visibleCells, colWidths, TableCellStyle)
-		output.WriteString(rowStr)
-		output.WriteString("\n")
+		visibleCells := getVisibleSlice(row, columnOffset, visibleColCount)
+		output.WriteString(renderRow(visibleCells, colWidths, TableCellStyle) + "\n")
 	}
 
-	// Pagination info
 	output.WriteString("\n")
-	paginationInfo := fmt.Sprintf("Showing rows %d-%d of %d", scrollOffset+1, endRow, totalRows)
-	output.WriteString(TableInfoStyle.Render(paginationInfo))
+	output.WriteString(TableInfoStyle.Render(
+		fmt.Sprintf("Showing rows %d-%d of %d", scrollOffset+1, endRow, totalRows),
+	))
 
-	// Help text
 	output.WriteString("\n")
-	helpText := TableHelpStyle.Render("↑/↓: Scroll Rows  |  ←/→: Scroll Columns  |  PgUp/PgDn: Page  |  b/Esc: Back  |  q: Quit")
-	output.WriteString(helpText)
+	output.WriteString(TableHelpStyle.Render(
+		"↑/↓: Rows  |  ←/→: Columns  |  PgUp/PgDn: Page  |  c: Column Menu  |  b/Esc: Back  |  q: Quit",
+	))
 
-	return lipgloss.Place(
-		130, 35,
-		lipgloss.Center, lipgloss.Center,
-		TableBorderStyle.Render(output.String()),
-	)
+	return TableBorderStyle.Render(output.String())
 }
 
 // getVisibleSlice returns a slice of visible elements based on offset and count
@@ -125,54 +107,55 @@ func getVisibleSlice(items []string, offset, count int) []string {
 	if offset >= len(items) {
 		return []string{}
 	}
-
 	end := offset + count
 	if end > len(items) {
 		end = len(items)
 	}
-
 	return items[offset:end]
 }
 
-// calculateColumnWidths calculates optimal width for visible columns only
-func calculateColumnWidths(dt *models.DataTable, maxWidth, columnOffset, visibleColumns int) []int {
+// calculateColumnWidths calculates widths for visible columns only
+func calculateColumnWidths(dt *models.DataTable, colOffset, visibleCount int) []int {
 	totalCols := dt.ColumnCount()
-	endCol := columnOffset + visibleColumns
+	endCol := colOffset + visibleCount
 	if endCol > totalCols {
 		endCol = totalCols
 	}
 
-	visibleCount := endCol - columnOffset
-	widths := make([]int, visibleCount)
+	visibleRange := endCol - colOffset
+	if visibleRange <= 0 {
+		return []int{}
+	}
+
+	widths := make([]int, visibleRange)
 
 	// Start with header widths
-	for i := 0; i < visibleCount; i++ {
-		colIdx := columnOffset + i
+	for i := 0; i < visibleRange; i++ {
+		colIdx := colOffset + i
 		if colIdx < len(dt.Headers) {
 			widths[i] = len(dt.Headers[colIdx])
 		}
 	}
 
-	// Check first 100 rows for max width
-	checkRows := 100
-	if dt.RowCount() < checkRows {
-		checkRows = dt.RowCount()
+	// Check first 100 rows
+	limit := dt.RowCount()
+	if limit > 100 {
+		limit = 100
 	}
-
-	for rowIdx := 0; rowIdx < checkRows; rowIdx++ {
-		row, _ := dt.GetRow(rowIdx)
-		for i := 0; i < visibleCount; i++ {
-			colIdx := columnOffset + i
+	for r := 0; r < limit; r++ {
+		row, _ := dt.GetRow(r)
+		for i := 0; i < visibleRange; i++ {
+			colIdx := colOffset + i
 			if colIdx < len(row) && len(row[colIdx]) > widths[i] {
 				widths[i] = len(row[colIdx])
 			}
 		}
 	}
 
-	// Apply max width limit
+	// Cap width at 15 chars, min 5
 	for i := range widths {
-		if widths[i] > maxWidth {
-			widths[i] = maxWidth
+		if widths[i] > 15 {
+			widths[i] = 15
 		}
 		if widths[i] < 5 {
 			widths[i] = 5
@@ -182,30 +165,22 @@ func calculateColumnWidths(dt *models.DataTable, maxWidth, columnOffset, visible
 	return widths
 }
 
-// renderRow renders a single row with given widths and style
 func renderRow(cells []string, widths []int, style lipgloss.Style) string {
 	var parts []string
-
-	for i, cell := range cells {
-		if i >= len(widths) {
-			break
+	for i := 0; i < len(widths); i++ {
+		cell := ""
+		if i < len(cells) {
+			cell = cells[i]
 		}
-
-		// Truncate if too long
 		if len(cell) > widths[i] {
-			cell = cell[:widths[i]-3] + "..."
+			cell = cell[:max(1, widths[i]-3)] + "..."
 		}
-
-		// Pad to width
 		cell = padRight(cell, widths[i])
-
 		parts = append(parts, style.Render(cell))
 	}
-
 	return strings.Join(parts, " │ ")
 }
 
-// padRight pads a string to the right with spaces
 func padRight(s string, length int) string {
 	if len(s) >= length {
 		return s
@@ -213,11 +188,17 @@ func padRight(s string, length int) string {
 	return s + strings.Repeat(" ", length-len(s))
 }
 
-// sum calculates the sum of integers in a slice
 func sum(nums []int) int {
 	total := 0
 	for _, n := range nums {
 		total += n
 	}
 	return total
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
