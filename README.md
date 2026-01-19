@@ -2,11 +2,13 @@
 
 **Dil Seçimi | Language Selection**
 
-[Türkçe](#turkish) | [English](#english)
+[Türkçe](#türkçe-dokümantasyon) | [English](#english-documentation)
 
 ---
 
-## Türkçe Dokümantasyon {#turkish}
+<a id="türkçe-dokümantasyon"></a>
+
+## Türkçe Dokümantasyon
 
 ### Proje Açıklaması
 
@@ -23,6 +25,14 @@ SnapClean, CSV ve Excel dosyalarınızda bulunan veri temizleme işlemlerini int
   - Sütun seçimi ve yönetimi
 - **Dosya Yönetimi**: Grafik dosya seçici ile kolayca dosya açma
 - **Veri Görselleştirme**: Temizlenen verileri tablo formatında görüntüleme
+
+### Uygulama Arayüzü
+
+![SnapClean - Splash Ekranı](media/load.png)
+
+![SnapClean - Modül Görünümü](media/module.png)
+
+![SnapClean - Tablo Görünümü](media/view.png)
 
 ### Gereksinimler
 
@@ -132,7 +142,9 @@ Sorularınız veya önerileriniz için bir issue oluşturun.
 
 ---
 
-## English Documentation {#english}
+<a id="english-documentation"></a>
+
+## English Documentation
 
 ### Project Description
 
@@ -149,6 +161,14 @@ SnapClean is a desktop application written in Go that allows you to perform data
   - Column selection and management
 - **File Management**: Easy file opening with graphical file picker
 - **Data Visualization**: View cleaned data in table format
+
+### Application Interface
+
+![SnapClean - Splash Screen](media/load.png)
+
+![SnapClean - Module View](media/module.png)
+
+![SnapClean - Table View](media/view.png)
 
 ### Requirements
 
